@@ -16,7 +16,7 @@ use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\AbstractType;
 
 /**
- * Form Type for Choosing a Payment Method.
+ * Form Type for Chososing a Payment Method.
  *
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
  */
