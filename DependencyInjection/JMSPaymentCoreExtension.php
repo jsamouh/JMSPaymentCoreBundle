@@ -42,8 +42,5 @@ class JMSPaymentCoreExtension extends Extension
             $container->setParameter('payment.encryption_service.secret', $config['secret']);
         }
 
-        if (version_compare(Kernel::VERSION, '2.1.0-DEV', '<')) {
-            $container->removeDefinition('payment.form.choose_payment_method_type');
-        }
     }
 }

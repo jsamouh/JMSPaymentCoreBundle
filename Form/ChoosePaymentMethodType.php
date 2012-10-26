@@ -2,20 +2,18 @@
 
 namespace JMS\Payment\CoreBundle\Form;
 
-use JMS\Payment\CoreBundle\Entity\ExtendedData;
-use JMS\Payment\CoreBundle\Entity\PaymentInstruction;
 use JMS\Payment\CoreBundle\PluginController\Result;
-use JMS\Payment\CoreBundle\PluginController\PluginControllerInterface;
+use JMS\Payment\CoreBundle\Entity\PaymentInstruction;
+use JMS\Payment\CoreBundle\Entity\ExtendedData;
 use Symfony\Component\Form\CallbackTransformer;
-use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceList;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormError;
-use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
-use Symfony\Component\Form\Util\PropertyPath;
-use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Symfony\Component\Form\CallbackValidator;
+use JMS\Payment\CoreBundle\PluginController\PluginControllerInterface;
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\AbstractType;
 
 /**
  * Form Type for Choosing a Payment Method.
@@ -37,7 +35,7 @@ class ChoosePaymentMethodType extends AbstractType
         $this->paymentMethods = $paymentMethods;
     }
 
-    public function buildForm(FormBuilderInterface $builder, array $options)
+    public function buildForm(FormBuilder $builder, array $options)
     {
         if (!isset($options['currency'])) {
             throw new \InvalidArgumentException(sprintf('The option "currency" must be given for form type "%s".', $this->getName()));
@@ -64,7 +62,6 @@ class ChoosePaymentMethodType extends AbstractType
         $builder->add('method', 'choice', array(
             'choices' => $this->buildChoices($options['available_methods']),
             'expanded' => true,
-            'data' => $options['default_method'],
         ));
 
         foreach ($options['available_methods'] as $method) {
@@ -73,17 +70,17 @@ class ChoosePaymentMethodType extends AbstractType
         }
 
         $self = $this;
-        $builder->addEventListener(FormEvents::POST_BIND, function($form) use ($self, $options) {
+        $builder->addValidator(new CallbackValidator(function($form) use ($self, $options) {
             $self->validate($form, $options);
-        });
-        $builder->addModelTransformer(new CallbackTransformer(
+        }));
+        $builder->appendNormTransformer(new CallbackTransformer(
             function($data) use ($self, $options) {
                 return $self->transform($data, $options);
             },
             function($data) use ($self, $options) {
                 return $self->reverseTransform($data, $options);
             }
-        ), true);
+        ));
     }
 
     public function transform($data, array $options)
@@ -100,7 +97,7 @@ class ChoosePaymentMethodType extends AbstractType
             }
 
             return array(
-                'method'        => $method,
+                'method' => $method,
                 'data_'.$method => $methodData,
             );
         }
@@ -159,14 +156,13 @@ class ChoosePaymentMethodType extends AbstractType
         }
     }
 
-    public function setDefaultOptions(OptionsResolverInterface $resolver)
+    public function getDefaultOptions(array $options)
     {
-        $resolver->setDefaults(array(
-            'amount'          => null,
-            'currency'        => null,
-            'default_method'  => null,
+        return array(
+            'currency' => null,
+            'amount' => null,
             'predefined_data' => array(),
-        ));
+        );
     }
 
     public function getName()
@@ -192,14 +188,8 @@ class ChoosePaymentMethodType extends AbstractType
             $form->addError(new FormError($error));
         }
 
-        foreach ($dataErrors as $path => $error) {
-            $path = explode('.', $path);
-            $field = $form;
-            do {
-                $field = $field->get(array_shift($path));
-            } while ($path);
-
-            $field->addError(new FormError($error));
+        foreach ($dataErrors as $field => $error) {
+            $form->get($field)->addError(new FormError($error));
         }
     }
 
@@ -213,3 +203,5 @@ class ChoosePaymentMethodType extends AbstractType
         return $choices;
     }
 }
+
+
